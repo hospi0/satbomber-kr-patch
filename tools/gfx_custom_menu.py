@@ -145,6 +145,18 @@ def sfx_horiz(o, a, b):
     return out
 
 
+def rank_unit(o, ch):
+    """대전 결과 «○ 勝 / ○ 位»(491078 32×24 · 4913F4 24×24): 원본 글자 잉크 범위(바탕 a 아닌 칸, 오른쪽 테두리 98f 앞)를
+       바탕 a 로 지우고 같은 범위를 꽉 채워 속 7·외곽 2"""
+    h, w = o.shape; R = w - 5
+    ys, xs = np.where(o[1:h - 1, :R] != 0xA); y0, y1, x0, x1 = ys.min() + 1, ys.max() + 1, xs.min(), xs.max()
+    out = o.copy(); out[1:h - 1, :R] = 0xA
+    m = big_mask(ch, 28)
+    H = y1 - y0 - 1; W = min(x1 - x0 - 1, round(m.shape[1] * H / m.shape[0]))     # 높이는 원본, 폭은 글자 본래 비율(늘리면 납작)
+    m = np.array(Image.fromarray((m * 255).astype(np.uint8)).resize((W, H), Image.LANCZOS)) >= 128
+    put(out, m, y0 + 1, x1 - W, 0x7, 0x2); return out                     # 원본처럼 오른쪽 끝에 붙임
+
+
 def team(o, ch):
     out = o.copy(); out[2:15, 3:46] = 0x2
     a = mask(ch, F11, 12); b = mask('팀', F11, 12)
@@ -154,7 +166,7 @@ def team(o, ch):
 
 
 JOBS = [(0x52BAA0, 56, 24, lambda o: master_btn(o, '재도전')), (0x52BC80, 56, 24, lambda o: master_btn(o, '종료')), (0x493130, 112, 24, two_tone),
-        (0x490368, 24, 16, zen), (0x0237F4, 16, 40, lambda o: sfx_vert(o, '바', '부')), (0x02AF60, 24, 48, lambda o: sfx_vert(o, '갸', '오')), (0x026DBC, 24, 40, lambda o: sfx_vert(o, '가', '오')),
+        (0x490368, 24, 16, zen), (0x491078, 32, 24, lambda o: rank_unit(o, '승')), (0x4913F4, 24, 24, lambda o: rank_unit(o, '위')), (0x0237F4, 16, 40, lambda o: sfx_vert(o, '바', '부')), (0x02AF60, 24, 48, lambda o: sfx_vert(o, '갸', '오')), (0x026DBC, 24, 40, lambda o: sfx_vert(o, '가', '오')),
         (0x0236F8, 40, 16, lambda o: sfx_horiz(o, '바', '부')), (0x026C60, 40, 24, lambda o: sfx_horiz(o, '가', '오')), (0x02AD84, 48, 24, lambda o: sfx_horiz(o, '갸', '오')), (0x039FCC, 72, 24, which_stage),
         *[(p, 40, 24, (lambda c: lambda o: team_box(o, c))(c)) for p, c in zip((0x4AB2D4, 0x4AB8FC, 0x4ABA18, 0x4ABB2C, 0x4ABC38), '백적청황녹')], (0x4911FC, 48, 24, bpoint),
         (0x493440, 80, 24, lambda o: shout(o, '처치!')), (0x49366C, 80, 24, lambda o: shout(o, '당함!'))] + \

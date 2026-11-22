@@ -47,10 +47,8 @@ def redraw(o, ko):
     y0 = h - 2 - H; x0 = (w - W) // 2                                # 원본처럼 조각 바닥(아래 1줄 여백)에 맞춤
     M = np.zeros_like(ink); M[y0:y0 + H, x0:x0 + W] = m
     out[dil8(M) & ~M] = 1
-    ks = sorted(rowc)
-    for y in range(y0, y0 + H):                                      # 원본 글자 세로 비율대로 색 옮김
-        t = (y - y0) / max(1, H - 1); src = ks[0] + t * (ks[-1] - ks[0]); c = rowc[min(ks, key=lambda k: abs(k - src))]
-        out[y][M[y]] = c
+    for y in range(y0, y0 + H):                                      # ★몸통 = 원본 순서대로 위 8 → 아래 3 매끈한 그라데이션(반짝임 = 색 돌리기, 줄마다 최빈색 옮기면 f·2 줄무늬가 깜빡 — 하스피 «고장난 형광등»)
+        t = (y - y0) / max(1, H - 1); out[y][M[y]] = 8 - int(round(t * 5))
     return out
 
 

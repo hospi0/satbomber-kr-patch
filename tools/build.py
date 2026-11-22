@@ -54,6 +54,19 @@ def patch_program(P):
         P[bl + 4:bl + 4 + len(enc)] = enc
         assert bcomp.decode_blob(bytes(P[bl:bl + 4 + n * 2 + 300])) == new
         print('  %06X 압축 %d / 자리 %d' % (bl, len(enc), room))
+    for fn in sorted(glob.glob(os.path.join(ROOT, 'work', 'nbg', '*.bin'))):   # 배경 면 칸 그림 덩어리(tools/nbg_score.py): [u32 VRAM 주소][u16 0x8000][u16 크기][압축]
+        bl = int(os.path.basename(fn)[:-4], 16); new = open(fn, 'rb').read()
+        assert P[bl:bl + 2] == b'\x25\xe3' and P[bl + 4:bl + 6] == b'\x80\x00', ('배경 덩어리 머리 아님', hex(bl))
+        n = int.from_bytes(P[bl + 6:bl + 8], 'big'); assert len(new) == n, ('크기 다름', hex(bl), len(new), n)
+        src = bytes(P[bl + 8:bl + 8 + n * 2 + 300]); used = bcomp.decode(src, n)[1]
+        end = bl + 8 + used
+        while end % 4: end += 1
+        room = end - (bl + 8)
+        enc = min((bcomp.encode(new, b) for b in range(5)), key=len)
+        assert len(enc) <= room, ('자리 넘침', hex(bl), len(enc), room)
+        P[bl + 8:bl + 8 + len(enc)] = enc
+        assert bcomp.decode(bytes(P[bl + 8:bl + 8 + n * 2 + 300]), n)[0] == new
+        print('  %06X 배경 칸 덩어리 압축 %d / 자리 %d' % (bl, len(enc), room))
     for fn in sorted(glob.glob(os.path.join(ROOT, 'work', 'raw', '*.bin'))):   # 저장 안내문 글자 기록(tools/save_msgs.py): 목록 영역 통째
         off = int(os.path.basename(fn)[:-4], 16); new = open(fn, 'rb').read()
         assert (0x45400 <= off and off + len(new) <= 0x4A000) or (off == 0x54B268 and len(new) == 400) or (0x50530 <= off and off + len(new) <= 0x52570), ('기록 덮어쓰기 범위 밖', hex(off))   # 저장 안내문 · 스샷 9 세로쓰기(story_vert.py) · 대사창 7개(dialogue.py) · 게임 오버 12프레임(gameover.py)
