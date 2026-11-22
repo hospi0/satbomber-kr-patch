@@ -187,11 +187,10 @@ def main():
             y = ys[li] if li < len(ys) else ys[-1] + 16 * (li - len(ys) + 1)
             if line == '': continue
             if line.startswith('#'):                                 # 선택지: 원래 はい·いいえ 자리
-                xs = sorted(r['x'] for r in G if r['y'] == y); groups = [[xs[0]]]
-                for x in xs[1:]:
-                    if x - groups[-1][-1] > 20: groups.append([x])
-                    else: groups[-1].append(x)
-                parts = line.strip('#').split('#'); segs = list(zip([g[0] for g in groups], parts))
+                xs = sorted(r['x'] for r in G if r['y'] == y)
+                parts = line.strip('#').split('#')                  # 선택지 수만큼 «가장 큰 틈»으로 나눔(はい 는 は·い 사이가 32px 라 틈 문턱으로 나누면 いいえ 자리를 놓침 — 하스피 실기 «칸 정렬 안됨»)
+                cut = sorted(sorted(range(1, len(xs)), key=lambda i: -(xs[i] - xs[i - 1]))[:len(parts) - 1])
+                starts = [xs[0]] + [xs[i] for i in cut]; segs = list(zip(starts, parts))
             else:
                 segs = [(line_x.get(y, lx0), line.lstrip('@'))]
             for x, s in segs:

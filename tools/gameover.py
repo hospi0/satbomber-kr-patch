@@ -2,7 +2,7 @@
 r"""«ゲームオーバー» 애니메이션(2026-11-22) → «게임 오버»
   프레임 목록 12개(51C80‥524E0, s_init, D 0x1F8000), 글자 조각 3벌(어두움·중간·밝음) × ゲ·ー·ム·オ·バ = 15개.
   ゲ→게 · ム→임 · オ→오 · バ→버 로 다시 그림(원본 글자의 줄별 몸통 색을 세로 비율로 옮김 + 바깥선 1), ー 조각은 투명.
-  기록은 조각별로 x 만 새 자리(게 −26 · 임 6 · 오 46 · 버 78), y·순서·번호 그대로.
+  기록은 조각별로 x 만 새 자리(게 −32 · 임 −2 · 오 38 · 버 68), y·순서·번호 그대로.
   python tools/gameover.py → work/gfx/<조각>.bin · work/raw/<목록>.bin · 미리보기 work/check/그림미리보기/게임오버_원본_한글.png"""
 import os, struct, sys
 from collections import Counter
@@ -19,8 +19,8 @@ SETS = [dict(ゲ=0x41B28, ー=0x41C44, ム=0x41C88, オ=0x41D88, バ=0x41E58),
         dict(ゲ=0x41F38, ー=0x4204C, ム=0x42090, オ=0x4219C, バ=0x42288),
         dict(ゲ=0x42388, ー=0x424A8, ム=0x424F0, オ=0x4260C, バ=0x4270C)]
 KO = dict(ゲ='게', ム='임', オ='오', バ='버')
-HK = 22
-NEWX = dict(ゲ=-26, ム=6, オ=46, バ=78)
+BW, BH = 26, 21                      # 24줄 조각에도 들어가는 크기(바깥선 포함 28×23)
+NEWX = dict(ゲ=-32, ム=-2, オ=38, バ=68)        # «게임 오버»: 글자 상자 28 사이 2px, 임·오 사이만 10px(띄어쓰기) — 하스피 «게   임오버로 나올꺼»
 
 
 def records(o):
@@ -41,7 +41,8 @@ def redraw(o, ko):
     for y in ys:                                                     # 줄 몸통 색 = 바깥선(1) 뺀 최빈
         v = [c for c in o[y] if c not in (0, 1)]
         if v: rowc[y] = Counter(v).most_common(1)[0][0]
-    m = big_mask(ko, HK)                                             # 모든 조각 같은 높이(같은 무리 같은 크기)
+    m = big_mask(ko, 28)                                             # ★네 글자 모두 같은 상자(속 BW×BH, 바깥선 포함 +2)를 꽉 채움 — 하스피 «글자크기가 다 다르면»
+    m = np.array(Image.fromarray((m * 255).astype(np.uint8)).resize((BW, BH), Image.LANCZOS)) >= 128
     out = np.zeros_like(o); H, W = m.shape
     y0 = h - 2 - H; x0 = (w - W) // 2                                # 원본처럼 조각 바닥(아래 1줄 여백)에 맞춤
     M = np.zeros_like(ink); M[y0:y0 + H, x0:x0 + W] = m

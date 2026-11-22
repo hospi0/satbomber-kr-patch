@@ -118,14 +118,30 @@ def which_stage(o):
     put(out, a, 0, 0, 0xF); put(out, b, 12, 16, 0xF); return out
 
 
+def _fill_box(out, ch, y0, y1, x0, x1):
+    """원본 잉크 범위(바깥선 포함) [y0,y1]×[x0,x1] 를 꽉 채움: 큰 글꼴 잉크를 안쪽(−2)으로 늘리고 외곽 b·속 2·윗가장자리 f"""
+    m = big_mask(ch, 28)
+    m = np.array(Image.fromarray((m * 255).astype(np.uint8)).resize((x1 - x0 - 1, y1 - y0 - 1), Image.LANCZOS)) >= 128
+    put(out, m, y0 + 1, x0 + 1, 0x2, 0xB, 0xF)
+
+
+def _ink(o):
+    ys, xs = np.where(o != 0); return ys.min(), ys.max(), xs.min(), xs.max()
+
+
 def sfx_vert(o, a, b):
-    """세로 두 글자 효과음(0237F4 16×40 «バブ»→바부, 02AF60 24×48 «ギャオ»→갸오): 원본처럼 글자마다 칸(폭 × 높이/2)을 바깥선까지 꽉 채움
-       — 큰 글꼴 잉크를 (폭−2)×(칸 높이−2) 로 늘려 그리고 외곽 b(1px)·속 2·윗가장자리 f"""
+    """세로 두 글자 효과음(0237F4 バブ·02AF60 ギャオ·026DBC ガオ): 위·아래 반 칸마다 원본 잉크 범위를 꽉 채움"""
     h, w = o.shape; out = np.zeros_like(o); hh = h // 2
     for k, ch in enumerate((a, b)):
-        m = big_mask(ch, 28)
-        m = np.array(Image.fromarray((m * 255).astype(np.uint8)).resize((w - 2, hh - 2), Image.LANCZOS)) >= 128
-        put(out, m, k * hh + 1, 1, 0x2, 0xB, 0xF)
+        y0, y1, x0, x1 = _ink(o[k * hh:(k + 1) * hh]); _fill_box(out, ch, k * hh + y0, k * hh + y1, x0, x1)
+    return out
+
+
+def sfx_horiz(o, a, b):
+    """가로 두 글자 효과음(0236F8 バブ·026C60 ガオ·02AD84 ギャオ): 왼·오른 반 칸마다 원본 잉크 범위를 꽉 채움"""
+    h, w = o.shape; out = np.zeros_like(o); ww = w // 2
+    for k, ch in enumerate((a, b)):
+        y0, y1, x0, x1 = _ink(o[:, k * ww:(k + 1) * ww]); _fill_box(out, ch, y0, y1, k * ww + x0, k * ww + x1)
     return out
 
 
@@ -138,7 +154,8 @@ def team(o, ch):
 
 
 JOBS = [(0x52BAA0, 56, 24, lambda o: master_btn(o, '재도전')), (0x52BC80, 56, 24, lambda o: master_btn(o, '종료')), (0x493130, 112, 24, two_tone),
-        (0x490368, 24, 16, zen), (0x0237F4, 16, 40, lambda o: sfx_vert(o, '바', '부')), (0x02AF60, 24, 48, lambda o: sfx_vert(o, '갸', '오')), (0x039FCC, 72, 24, which_stage),
+        (0x490368, 24, 16, zen), (0x0237F4, 16, 40, lambda o: sfx_vert(o, '바', '부')), (0x02AF60, 24, 48, lambda o: sfx_vert(o, '갸', '오')), (0x026DBC, 24, 40, lambda o: sfx_vert(o, '가', '오')),
+        (0x0236F8, 40, 16, lambda o: sfx_horiz(o, '바', '부')), (0x026C60, 40, 24, lambda o: sfx_horiz(o, '가', '오')), (0x02AD84, 48, 24, lambda o: sfx_horiz(o, '갸', '오')), (0x039FCC, 72, 24, which_stage),
         *[(p, 40, 24, (lambda c: lambda o: team_box(o, c))(c)) for p, c in zip((0x4AB2D4, 0x4AB8FC, 0x4ABA18, 0x4ABB2C, 0x4ABC38), '백적청황녹')], (0x4911FC, 48, 24, bpoint),
         (0x493440, 80, 24, lambda o: shout(o, '처치!')), (0x49366C, 80, 24, lambda o: shout(o, '당함!'))] + \
        [(p, 48, 16, (lambda c: lambda o: team(o, c))(c)) for p, c in zip((0x4BB170, 0x4BB288, 0x4BB390, 0x4BB48C, 0x4BB58C), '백적청황녹')]
